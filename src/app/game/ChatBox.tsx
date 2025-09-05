@@ -17,12 +17,11 @@ export default function ChatBox({ moves }: Props) {
     const userMessage = `👤: ${input}`;
     setMessages((prev) => [...prev, userMessage]);
 
-    // 💡 Bağlamlı prompt
     const history = moves.length > 0 ? `Hamle geçmişi: ${moves.join(', ')}.\n` : '';
     const fullPrompt = `${history}Kullanıcının sorusu: ${input}`;
 
     try {
-      const aiReply = await askAI(fullPrompt);
+      const aiReply = await askAI(fullPrompt, 'chat');
       setMessages((prev) => [...prev, `🤖: ${aiReply}`]);
     } catch (err) {
       setMessages((prev) => [...prev, '🤖: [AI cevap veremedi]']);

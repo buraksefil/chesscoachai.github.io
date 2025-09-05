@@ -4,34 +4,34 @@ import { useState } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 
-export default function TestPage() {
+export default function ChessTest() {
   const [game, setGame] = useState(() => new Chess());
   const [fen, setFen] = useState(game.fen());
 
-  function onDrop(source: string, target: string) {
-    const tempGame = new Chess(game.fen());
-    const move = tempGame.move({
-      from: source,
-      to: target,
+  function onDrop(sourceSquare, targetSquare) {
+    console.log('🧲 Sürükle-bırak:', sourceSquare, '→', targetSquare);
+
+    const newGame = new Chess(game.fen());
+    const move = newGame.move({
+      from: sourceSquare,
+      to: targetSquare,
       promotion: 'q',
     });
-    
+
     if (move === null) {
-      console.log('❌ Geçersiz hamle:', source, '→', target);
+      console.log('❌ Geçersiz hamle');
       return false;
     }
-    console.log('⏩ Sürüklenen:', source, '→', target);
 
-
-    console.log('✅ Hamle:', move.san);
-    setGame(tempGame);
-    setFen(tempGame.fen());
+    console.log('✅ Hamle yapıldı:', move.san);
+    setGame(newGame);
+    setFen(newGame.fen());
     return true;
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center">
-      <h1 className="text-2xl font-bold mb-4">Satranç Test</h1>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-white text-black">
+      <h1 className="text-2xl font-bold mb-4">♟️ Satranç Test Tahtası</h1>
       <Chessboard
         position={fen}
         onPieceDrop={onDrop}

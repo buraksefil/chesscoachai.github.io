@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt } = await req.json();
+    const { prompt, systemPrompt } = await req.json();
     console.log("Gelen prompt (GROQ):", prompt);
 
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -12,11 +12,11 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', // Diğer seçenek: llama3-70b-8192 veya mixtral-8x7b-32768
+        model: 'llama-3.3-70b-versatile',
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful chess coach assistant.',
+            content: systemPrompt || 'You are a helpful chess coach assistant',
           },
           {
             role: 'user',
