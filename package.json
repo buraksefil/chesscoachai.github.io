@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "export:docs": "next build && rm -rf docs && mv out docs",
+    "export:docs": "next build && next export && rm -rf docs && mv out docs && cp -f public/.nojekyll docs/.nojekyll",
     "start": "next start"
   },
   "dependencies": {
