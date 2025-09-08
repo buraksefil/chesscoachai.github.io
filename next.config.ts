@@ -1,7 +1,10 @@
-import type { NextConfig } from "next";
+// next.config.ts
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'export',           // static export
+  images: { unoptimized: true },
+  trailingSlash: true,        // /game -> /game/index.html
 };
 
 export default nextConfig;

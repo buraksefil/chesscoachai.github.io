@@ -1,53 +1,22 @@
+// app/page.tsx
 'use client';
+import Link from 'next/link';
 
-import { useState } from 'react';
-import { Chess } from 'chess.js';
-import { Chessboard } from 'react-chessboard';
-import ChatBox from './ChatBox';
-import useStockfish from '@/hooks/useStockfish';
-
-export default function GamePage() {
-  const [game, setGame] = useState(() => new Chess());
-  const [moves, setMoves] = useState<string[]>([]);
-
-  const { sendPosition } = useStockfish((bestMove) => {
-    const move = game.move({
-      from: bestMove.substring(0, 2),
-      to: bestMove.substring(2, 4),
-      promotion: 'q',
-    });
-
-    if (move) {
-      setGame(new Chess(game.fen())); // Tahta güncelle
-      setMoves((prev) => [...prev, move.san]);
-    }
-  });
-
-  const makeAMove = (from: string, to: string) => {
-    const move = game.move({ from, to, promotion: 'q' });
-
-    if (move) {
-      setGame(new Chess(game.fen()));
-      setMoves((prev) => [...prev, move.san]);
-
-      // Kullanıcı hamle yaptıktan sonra Stockfish'e FEN gönder
-      setTimeout(() => {
-        sendPosition(game.fen());
-      }, 300);
-
-      return true;
-    }
-    return false;
-  };
-
+export default function Home() {
   return (
-    <div className="flex flex-col md:flex-row gap-10 p-8">
-      <Chessboard
-        position={game.fen()}
-        onPieceDrop={(source, target) => makeAMove(source, target)}
-        boardWidth={400}
-      />
-      <ChatBox moves={moves} />
-    </div>
+    <main className="min-h-screen flex items-center justify-center bg-zinc-950 text-white p-8">
+      <div className="max-w-xl text-center space-y-6">
+        <h1 className="text-4xl font-bold">ChessCoach.ai</h1>
+        <p className="opacity-80">
+          Akıllı satranç koçu: öneri, plan ve taktikleri anlık olarak açıklar.
+        </p>
+        <Link
+          href="/game"
+          className="inline-block px-6 py-3 rounded bg-emerald-600 hover:bg-emerald-700"
+        >
+          Oyna
+        </Link>
+      </div>
+    </main>
   );
 }

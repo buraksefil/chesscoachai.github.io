@@ -6,6 +6,13 @@ import { Chessboard } from 'react-chessboard';
 import ChatBox from './ChatBox';
 import MoveHistory, { MoveDetail } from './MoveHistory';
 
+// 🔗 Worker URL'in: build-time ENV yoksa bu default kullanılacak
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || 'https://ask-ai.buraksefil-work.workers.dev').replace(/\/$/, '');
+
+const AI_ENDPOINT =
+  process.env.NEXT_PUBLIC_AI_ENDPOINT ||
+  'https://ask-ai.buraksefil-work.workers.dev/api/ask-ai';
+
 type AISuggestion = {
   san: string;
   from: string;
@@ -53,10 +60,8 @@ export default function GamePage() {
     k: 'Bir kare her yöne gider; kale ile rok yapabilir.',
   };
 
-  // ---- Öğretici vurguları temizle
   function clearTeachHints() { setSelectedSq(null); setMoveSquares({}); }
 
-  // ---- Oyun sonu metni
   function updateStatus(g: Chess) {
     if (g.isCheckmate()) {
       const loser = g.turn() === 'w' ? 'Beyaz' : 'Siyah';
@@ -76,22 +81,16 @@ export default function GamePage() {
     return false;
   }
 
-  // ------------ BOT: zorluklara göre hamle seçimi ------------
   const PIECE_VALUE: Record<string, number> = { p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 };
 
-  // ✅ Güvenli evaluateBoard (FEN 6 alanlı kalır)
   function evaluateBoard(g: Chess): number {
-    // Materyal
     const board = g.board();
     let score = 0;
-    for (const row of board) {
-      for (const cell of row) {
-        if (!cell) continue;
-        const v = PIECE_VALUE[cell.type] ?? 0;
-        score += cell.color === 'w' ? v : -v;
-      }
+    for (const row of board) for (const cell of row) {
+      if (!cell) continue;
+      const v = PIECE_VALUE[cell.type] ?? 0;
+      score += cell.color === 'w' ? v : -v;
     }
-    // Küçük mobilite bonusu
     try {
       const parts = g.fen().split(' ');
       if (parts.length === 6) {
@@ -135,13 +134,11 @@ export default function GamePage() {
     const moves = g.moves({ verbose: true }) as any[]; if (!moves.length) return null;
     if (level === 'easy') return moves[Math.floor(Math.random() * moves.length)];
     if (level === 'normal') { let best = moves[0], sBest = -Infinity; for (const m of moves) { const s = heuristicScore(m, g); if (s > sBest) { sBest = s; best = m; } } return best; }
-    // hard
     let bestMove = moves[0], best = -Infinity;
     for (const m of moves) { const ng = new Chess(g.fen()); ng.move({ from: m.from, to: m.to, promotion: m.promotion }); const s = minimax(ng, 1, -Infinity, Infinity, false, 'b'); if (s > best) { best = s; bestMove = m; } }
     return bestMove;
   }
 
-  // ---------- AI HINT: Dayanıklı + fallback ----------
   function fallbackSuggestion(fen: string): AISuggestion | null {
     const g = new Chess(fen);
     const verbose = g.moves({ verbose: true }) as any[];
@@ -165,17 +162,33 @@ export default function GamePage() {
       const controller = new AbortController(); abortRef.current = controller;
       const mySeq = ++reqSeq.current;
 
+      // 🔁 GROQ Worker'a istek
       const ask = async (prompt: string) => {
-        const res = await fetch('/api/ask-ai', { method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal, body: JSON.stringify({ prompt }) });
+        const res = await fetch(`${API_BASE}/api/ask-ai`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            prompt,
+            model: 'llama-3.3-70b-versatile', // Worker fallback’ı da var; bu satır opsiyonel
+          }),
+        });
         const data = await res.json(); return String(data?.result ?? '').trim();
       };
+
+      const res = await fetch(AI_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({ prompt }),
+      });
 
       const strict =
         `You are a chess assistant. Choose EXACTLY ONE best move by its 0-based index from this SAN list.\n` +
         `Return ONLY JSON: {"i":<int>,"reason":"<1-2 sentences>"}\n` +
         `Moves: ${JSON.stringify(legalSAN)}\nFEN: ${fen}`;
 
-      const parseIndex = (txt: string, max: number): { i?: number; reason?: string } | null => {
+      const parseIndex = (txt: string): { i?: number; reason?: string } | null => {
         try {
           const j = JSON.parse(txt.replace(/(\r\n|\n|\r)/g, '').replace(/'/g, '"'));
           if (Number.isInteger(j?.i)) return j;
@@ -186,11 +199,11 @@ export default function GamePage() {
       };
 
       let raw = await ask(strict); if (mySeq !== reqSeq.current) return;
-      let obj = parseIndex(raw, legalSAN.length);
+      let obj = parseIndex(raw);
 
       if (!obj || !(obj.i! >= 0 && obj.i! < legalSAN.length)) {
         raw = await ask(strict); if (mySeq !== reqSeq.current) return;
-        obj = parseIndex(raw, legalSAN.length);
+        obj = parseIndex(raw);
       }
 
       if (!obj || !(obj.i! >= 0 && obj.i! < legalSAN.length)) {
@@ -218,7 +231,6 @@ export default function GamePage() {
     }
   }
 
-  // --- Hamle uygulama ---
   function applyMoveSafe(from: string, to: string, promotion?: 'q'|'r'|'b'|'n') {
     try {
       const temp = new Chess(game.fen());
@@ -234,7 +246,7 @@ export default function GamePage() {
 
       const ended = updateStatus(temp); if (ended) return true;
 
-      if (!difficulty) return true; // güvenlik
+      if (!difficulty) return true;
 
       setTimeout(() => {
         const ng = new Chess(temp.fen());
@@ -258,16 +270,14 @@ export default function GamePage() {
     } catch { return false; }
   }
 
-  // --- Promotion tespiti ---
   const rank = (sq: string) => Number(sq[1]);
   function needsPromotion(from: string, to: string) {
     const piece = game.get(from); if (!piece || piece.type !== 'p') return false;
     const r = rank(to); return (piece.color === 'w' && r === 8) || (piece.color === 'b' && r === 1);
   }
 
-  // --- Board callbacks ---
   function onDrop(source: string, target: string) {
-    if (!difficulty) return false;            // ⛔ seviye seçilmeden oyun başlamaz
+    if (!difficulty) return false;
     if (status.over) return false;
     if (needsPromotion(source, target)) { setPending({ from: source, to: target, color: game.get(source)!.color }); setShowPromotion(true); return false; }
     return applyMoveSafe(source, target);
@@ -291,16 +301,9 @@ export default function GamePage() {
     setGame(new Chess()); setMoves([]); setMoveDetails([]); setAiSuggestion(null); setAiHintText('');
     setShowPromotion(false); setPending(null); setStatus({ over: false, text: '' }); clearTeachHints();
     if (abortRef.current) abortRef.current.abort(); reqSeq.current++;
-    setDifficulty(null); // ✅ her yeni oyunda seviye tekrar sorulsun
+    setDifficulty(null);
   }
 
-  // Seçili taş bilgisi (öğretici paneli)
-  const selectedInfo = (() => {
-    if (!selectedSq) return null; const p = game.get(selectedSq); if (!p) return null;
-    return { name: pieceNameTR[p.type] ?? p.type.toUpperCase(), color: p.color === 'w' ? 'Beyaz' : 'Siyah', how: pieceHowTo[p.type] ?? '' };
-  })();
-
-  // Zorluk seçildikten sonra ilk ipucunu üret
   useEffect(() => {
     if (difficulty && !status.over) getAIHint(game.fen());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -310,9 +313,7 @@ export default function GamePage() {
 
   return (
     <div className="p-6">
-      {/* 3 sütunlu responsive grid: [Tahta] [Chat] [Paneller] */}
       <div className="grid grid-cols-1 lg:grid-cols-[420px_minmax(420px,1fr)_360px] gap-6 items-start">
-        {/* SOL: Tahta + AI Önerisi / Oyun bitti */}
         <div className="relative flex flex-col gap-4">
           <Chessboard
             position={game.fen()}
@@ -323,7 +324,6 @@ export default function GamePage() {
             arePiecesDraggable={!!difficulty && !status.over}
           />
 
-          {/* ▶️ Başlangıç zorluk seçimi pop-up */}
           {difficulty === null && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
               <div className="bg-zinc-900 text-white rounded-xl p-5 border border-zinc-700 w-80">
@@ -343,7 +343,6 @@ export default function GamePage() {
             </div>
           )}
 
-          {/* Promotion modal (bizimki) */}
           {showPromotion && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
               <div className="bg-zinc-900 text-white rounded-xl p-4 border border-zinc-700 w-64">
@@ -386,14 +385,11 @@ export default function GamePage() {
           )}
         </div>
 
-        {/* ORTA: ChatBox (AI konuşması) */}
         <div className="lg:sticky lg:top-6">
           <ChatBox moves={moves} fen={game.fen()} />
         </div>
 
-        {/* SAĞ: Zorluk, Öğretici, Hamle geçmişi */}
         <div className="flex flex-col gap-4 lg:sticky lg:top-6">
-          {/* Zorluk göstergesi (kilitli) */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white">
             <div className="text-lg font-semibold">Rakip Zorluğu</div>
             <div className="mt-1">
@@ -406,7 +402,6 @@ export default function GamePage() {
             </p>
           </div>
 
-          {/* Öğretici mod paneli */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white">
             <div className="flex items-center justify-between">
               <div className="text-lg font-semibold">Öğretici Modu</div>
@@ -437,7 +432,6 @@ export default function GamePage() {
             })()}
           </div>
 
-          {/* Hamle geçmişi */}
           <MoveHistory moveDetails={moveDetails} />
         </div>
       </div>

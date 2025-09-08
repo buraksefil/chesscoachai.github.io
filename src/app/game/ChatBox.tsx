@@ -12,16 +12,8 @@ export default function ChatBox({ moves, fen }: { moves: string[]; fen: string }
   const pieceTR: Record<string, string> = {
     p: 'Piyon', n: 'At', b: 'Fil', r: 'Kale', q: 'Vezir', k: 'Şah',
   };
-
-  // ---------- Yardımcılar ----------
   const files = ['a','b','c','d','e','f','g','h'];
   const sqName = (r: number, f: number) => `${files[f]}${8 - r}`;
-
-  function flipTurnInFen(f: string, to: 'w' | 'b') {
-    const p = f.split(' ');
-    if (p.length !== 6) return f;
-    return [p[0], to, p[2], p[3], p[4], p[5]].join(' ');
-  }
 
   function kingSqOf(g: Chess, color: 'w' | 'b'): string | null {
     const b = g.board();
@@ -32,15 +24,7 @@ export default function ChatBox({ moves, fen }: { moves: string[]; fen: string }
     return null;
   }
 
-  function attackersOfSquare(f: string, attacker: 'w'|'b', targetSq: string) {
-    const g = new Chess(flipTurnInFen(f, attacker));
-    const mv = g.moves({ verbose: true }) as any[];
-    return mv
-      .filter(m => m.to === targetSq)
-      .map(m => ({ piece: pieceTR[m.piece] ?? m.piece.toUpperCase(), from: m.from, to: m.to }));
-  }
-
-  // ---------- STATE + türetilmiş gerçekler ----------
+  // --- STATE: tahtadan türetilen gerçekler (LLM’e her mesajda bunu vereceğiz)
   const state = useMemo(() => {
     const g = new Chess(fen);
     const board = g.board();
@@ -59,148 +43,98 @@ export default function ChatBox({ moves, fen }: { moves: string[]; fen: string }
       }
     }
 
-    const turnColor = g.turn(); // 'w'|'b' sırası olan
+    const turnColor = g.turn(); // 'w' | 'b'
     const turnLabel = turnColor === 'w' ? 'Beyaz' : 'Siyah';
-    const oppColor = turnColor === 'w' ? 'b' : 'w';
-    const wKing = kingSqOf(g, 'w');
-    const bKing = kingSqOf(g, 'b');
+
     const legalVerbose = g.moves({ verbose: true }) as any[];
 
-    const derived = {
+    return {
+      fen,
       side_to_move: turnLabel,
       last_move: moves[moves.length - 1] ?? null,
       is_check: g.isCheck(),
       is_checkmate: g.isCheckmate(),
       is_stalemate: g.isStalemate(),
       is_draw: g.isDraw(),
-      w_king: wKing,
-      b_king: bKing,
+      w_king: kingSqOf(g, 'w'),
+      b_king: kingSqOf(g, 'b'),
       legal_count: legalVerbose.length,
-      // saldıran taşlar
-      attackers_on_w: wKing ? attackersOfSquare(fen, 'b', wKing) : [],
-      attackers_on_b: bKing ? attackersOfSquare(fen, 'w', bKing) : [],
-      winner_if_mate: g.isCheckmate() ? (turnColor === 'w' ? 'Siyah' : 'Beyaz') : null,
-    };
-
-    return {
-      fen,
+      // SAN ve basit verbose (LLM hamle seçebilmek için)
+      legal_moves_san: g.moves(),
+      legal_moves_verbose: legalVerbose.map(m => ({
+        from: m.from, to: m.to, san: m.san, piece: m.piece,
+        captured: m.captured ?? null, promotion: m.promotion ?? null
+      })),
       white: { count: whitePieces.length, pieces: whitePieces },
       black: { count: blackPieces.length, pieces: blackPieces },
-      legal_moves_san: g.moves(),
-      legal_moves_verbose: legalVerbose.map(m => ({ from: m.from, to: m.to, san: m.san, piece: m.piece, captured: m.captured ?? null, promotion: m.promotion ?? null })),
-      derived,
     };
   }, [fen, moves]);
 
-  // ---------- Yerel uzun açıklama (fallback + doğruluk garantisi) ----------
-  function localLongExplanation(): string {
-    const d = state.derived;
-    const side = d.side_to_move;
+  // Basit yerel özet (LLM boş dönerse yedek)
+  function localFallbackSummary(): string {
+    const d = state;
     if (d.is_checkmate) {
-      const king = (d.side_to_move === 'Beyaz') ? state.derived.w_king : state.derived.b_king;
-      const atk = d.side_to_move === 'Beyaz' ? d.attackers_on_w : d.attackers_on_b;
-      return [
-        `Şah mat: sıra ${side}'ta ve ${side.toLowerCase()}nın şahı ${king ?? '-'} karesinde tehdit altında.`,
-        `Hiçbir yasal hamle yok; bu nedenle konum mat olarak sonuçlandı.`,
-        `Saldıran taş(lar): ${atk.length ? atk.map(a => `${a.piece} (${a.from}→${a.to})`).join(', ') : 'en az bir taş'}.`,
-        `${d.winner_if_mate} kazandı.`,
-      ].join(' ');
+      const winner = d.side_to_move === 'Beyaz' ? 'Siyah' : 'Beyaz';
+      return `Şah mat. ${winner} kazandı.`;
     }
-    if (d.is_stalemate) {
-      return `Patt: sıra ${side}'ta ve ${side.toLowerCase()}nın hiç yasal hamlesi yok, ancak şah tehdit altında değil. Konum beraberedir.`;
-    }
-    if (d.is_check) {
-      const king = (d.side_to_move === 'Beyaz') ? state.derived.w_king : state.derived.b_king;
-      const atk = d.side_to_move === 'Beyaz' ? d.attackers_on_w : d.attackers_on_b;
-      return [
-        `${side} şah altında. Kral ${king ?? '-'} karesinde.`,
-        `Saldıran taş(lar): ${atk.length ? atk.map(a => `${a.piece} (${a.from}→${a.to})`).join(', ') : 'en az bir taş'}.`,
-        `Toplam legal hamle sayısı: ${d.legal_count}.`,
-      ].join(' ');
-    }
-    if (d.is_draw) {
-      return `Oyun berabere (50 hamle kuralı, üç tekrar veya diğer bir sebep). Sıra: ${side}. Legal hamle sayısı: ${d.legal_count}.`;
-    }
-    return `Oyun devam ediyor. Sıra ${side}'ta. Legal hamle sayısı: ${state.derived.legal_count}.`;
+    if (d.is_stalemate) return `Patt — berabere. Sıra ${d.side_to_move}'ta ama yasal hamle yok.`;
+    if (d.is_draw) return `Oyun berabere. Sıra: ${d.side_to_move}.`;
+    return `Oyun devam ediyor. Sıra ${d.side_to_move}'ta. Toplam legal hamle: ${d.legal_count}.`;
   }
 
-  // ---------- LLM: STATE’e dayan, 4–6 cümle yaz, JSON dön ----------
-  async function askLLMWithState(question: string, forceFacts?: string) {
-    const minSent = 4, maxSent = 6;
+  async function askCoach(question: string) {
+    const endpoint = process.env.NEXT_PUBLIC_AI_ENDPOINT || '/api/ask-ai';
 
-    const protocol =
-`SEN BİR SATRANÇ ASİSTANISIN.
-Aşağıda chess.js'ten türetilmiş TAHTA GERÇEĞİ (STATE) ve özetlenmiş GERÇEKLER (FACTS) var.
-Cevabını YALNIZCA bunlara dayanarak üret; çelişki yaratma, uydurma yapma.
-Türkçe yaz ve ${minSent}–${maxSent} cümle uzunluğunda açıkla.
+    // Tek prompt: her zaman koç modu, sadece STATE’e dayan, Türkçe yaz.
+    const prompt =
+`Sen ChessCoach.ai isimli güçlü bir satranç koçusun.
+Aşağıda sana chess.js'ten üretilmiş TAHTA DURUMU (STATE) veriyorum.
+Cevaplarını YALNIZ bu STATE'e dayanarak üret. Uydurma yapma; emin değilsen "bu veriden kesin söyleyemem" de.
+Türkçe yaz. Öğretici, sade ve net ol.
 
-DÖNÜŞ ŞEMASI (yalnız JSON):
-{"short": "<tek cümlelik özet>", "long": "<${minSent}-${maxSent} cümle açıklama>", "mate": true/false, "check": true/false, "stalemate": true/false, "turn": "Beyaz|Siyah"}
+Genel davranış:
+- Kullanıcı ne sorarsa sorsun, önce konumu kısaca değerlendir (şah/tehdit/taş aktivitesi/plan).
+- İSTERSE hamle öner: sıranın kimde olduğunu belirt, en iyi bulduğun 1 hamleyi **SAN** formatında yaz ve 3–6 cümleyle gerekçelendir.
+- Eğer sıranın karşı tarafta olduğunu fark edersen, önce "Sıra ${state.side_to_move}'ta" diye düzelt ve ona göre konuş.
+- Taktik uyarıları (açıkta taş, çatal, mat ağı vb.) varsa belirt.
+- Gereksiz uzun anlatma; net, araç gösterir gibi konuş.
+- Çıktı biçimi: normal metin/markdown. JSON döndürme.
 
-STATE:
+STATE (JSON):
 \`\`\`json
 ${JSON.stringify(state)}
 \`\`\`
 
-FACTS (önemli, çelişme):
-\`\`\`
-${forceFacts ?? localLongExplanation()}
-\`\`\`
+Kullanıcının sorusu:
+${question}`;
 
-KULLANICI SORUSU:
-${question}
-`;
-
-    const res = await fetch('/api/ask-ai', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: protocol }),
-    });
-    const data = await res.json();
-    const raw = String(data?.result ?? '').trim();
-
-    try {
-      const obj = JSON.parse(raw.replace(/(\r\n|\n|\r)/g, '').replace(/'/g, '"'));
-      // Basit doğrulama + uzunluk kontrolü
-      const long: string = String(obj?.long ?? '').trim();
-      if (!long || long.split(/[.!?](\s|$)/).filter(s => s.trim().length > 0).length < minSent) {
-        throw new Error('too-short');
+    const res = await fetch(
+      endpoint.startsWith('http') ? endpoint : endpoint, // GH Pages için tam URL ise aynen kullan
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
       }
-      // Mate/check/stale alanlarını da cross-check edelim; çelişirse yerel metne düş
-      if (obj?.mate !== state.derived.is_checkmate || obj?.stalemate !== state.derived.is_stalemate || obj?.check !== state.derived.is_check) {
-        throw new Error('contradiction');
-      }
-      return long;
-    } catch {
-      // JSON bozuksa/kısa/çelişkiliyse yerel metni dön
-      return localLongExplanation();
-    }
+    );
+
+    const data = await res.json().catch(() => ({}));
+    const text = String(data?.result ?? '').trim();
+    return text || localFallbackSummary();
   }
 
-  // ---------- UI davranışı ----------
   async function onSend() {
     const text = input.trim();
     if (!text) return;
     setMsgs(prev => [...prev, { role: 'user', text }]);
     setInput('');
-
-    const lower = text.toLowerCase();
-
-    // Kritik durum soruları → yerel teşhis + LLM ile uzun anlatım
-    const isMateQ = /(şah\s*mat|sah\s*mat|checkmate|mate)/i.test(lower);
-    const isCheckQ = /(şah\s*altında|şah\s*çekildi|check\b)/i.test(lower);
-    const isStaleQ = /(patt|stalemate|berabere)/i.test(lower);
-    const needsStateExplain = isMateQ || isCheckQ || isStaleQ || /durumu|position|konum/i.test(lower);
-
     try {
-      const answer = await askLLMWithState(text, needsStateExplain ? localLongExplanation() : undefined);
+      const answer = await askCoach(text);
       setMsgs(prev => [...prev, { role: 'ai', text: answer }]);
     } catch {
-      setMsgs(prev => [...prev, { role: 'ai', text: localLongExplanation() }]);
+      setMsgs(prev => [...prev, { role: 'ai', text: localFallbackSummary() }]);
     }
   }
 
-  // ---------- Render ----------
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white max-w-3xl">
       <h3 className="text-xl font-semibold mb-3">Aktif taşlar (canlı FEN):</h3>
@@ -232,7 +166,7 @@ ${question}
         ))}
         {!msgs.length && (
           <div className="text-sm opacity-70">
-            Örn: “Şu anki durumu açıkla”, “Şah mat mı?”, “Planım ne olmalı?”, “f1→a6 legal mi?”
+            Her şeyi sorabilirsin: “Şu anki konumu değerlendir”, “Planım ne olmalı?”, “Mat var mı?”, “En iyi hamle?”
           </div>
         )}
       </div>

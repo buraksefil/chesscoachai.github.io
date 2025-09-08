@@ -3,10 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "next dev",
+    "build": "next build",
+    "export": "next export",
+    "export:docs": "next build && next export -o docs",
+    "start": "next start"
   },
   "dependencies": {
     "chess.js": "^1.4.0",
