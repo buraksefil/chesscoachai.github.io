@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "export:docs": "next build && next export && rm -rf docs && mv out docs && cp -f public/.nojekyll docs/.nojekyll",
+    "export:docs": "rm -rf docs && GH_PAGES=true next build && mv out docs",
     "start": "next start"
   },
   "dependencies": {

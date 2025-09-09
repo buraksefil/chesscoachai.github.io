@@ -1,25 +1,19 @@
 // next.config.ts
-import type { NextConfig } from 'next';
-import path from 'path';
+import type { NextConfig } from "next";
+
+const isGh = process.env.GH_PAGES === "true";           // ← build’te set edeceğiz
+const repo = "chesscoachai.github.io";                  // ← repo adın
 
 const nextConfig: NextConfig = {
-  output: 'export',           // GH Pages için statik export
-  images: { unoptimized: true },
+  output: "export",                                     // next export yerine bu
+  basePath: isGh ? `/${repo}` : "",
+  assetPrefix: isGh ? `/${repo}/` : undefined,
   trailingSlash: true,
+  images: { unoptimized: true },
 
-  // Lockfile uyarısını sustur (workspace root yanlış algılanmasın)
-  outputFileTracingRoot: path.join(__dirname),
-
-  // 👉 Build sırasında ESLint'i yok say
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-
-  // (Opsiyonel) TS tip hataları varsa build'i durdurmasın
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // GH Pages build’inde lint/type hatalarına takılma:
+  eslint: { ignoreDuringBuilds: true },
+  typescript: { ignoreBuildErrors: true },
 };
 
 export default nextConfig;
-
