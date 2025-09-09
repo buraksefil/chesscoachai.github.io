@@ -11,7 +11,7 @@ export default function Home() {
           Akıllı satranç koçu: öneri, plan ve taktikleri anlık olarak açıklar.
         </p>
         <Link
-          href="/game"
+          href="chesscoachai.github.io/game"
           className="inline-block px-6 py-3 rounded bg-emerald-600 hover:bg-emerald-700"
         >
           Oyna
