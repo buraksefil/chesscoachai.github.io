@@ -1,17 +1,21 @@
 // next.config.ts
 import type { NextConfig } from "next";
 
-const isGh = process.env.GH_PAGES === "true";           // ← build’te set edeceğiz
-const repo = "chesscoachai.github.io";                  // ← repo adın
+const isGh = process.env.GH_PAGES === "true";         // export:docs sırasında set edeceğiz
+const repo = "chesscoachai.github.io";
+
+// GH Pages için mutlak assetPrefix kullanıyoruz (preload linkleri de doğru olsun)
+const prefixPath   = isGh ? `/${repo}` : "";
+const assetPrefix  = isGh ? `https://buraksefil.github.io/${repo}` : undefined;
 
 const nextConfig: NextConfig = {
-  output: "export",                                     // next export yerine bu
-  basePath: isGh ? `/${repo}` : "",
-  assetPrefix: isGh ? `/${repo}/` : undefined,
+  output: "export",
+  basePath: prefixPath,
+  assetPrefix,
   trailingSlash: true,
   images: { unoptimized: true },
 
-  // GH Pages build’inde lint/type hatalarına takılma:
+  // GH Pages eksportunda tip/lint hatasına takılma:
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
 };
