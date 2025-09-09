@@ -18,7 +18,8 @@ type AISuggestion = {
   from: string;
   to: string;
   piece: string;
-  reason: string;
+  reasonTr?: string;
+  reasonEn?: string;
 };
 
 type PendingMove = { from: string; to: string; color: 'w' | 'b' } | null;
@@ -143,13 +144,25 @@ export default function GamePage() {
     const g = new Chess(fen);
     const verbose = g.moves({ verbose: true }) as any[];
     if (!verbose.length) return null;
-    let best = verbose[0], sBest = -Infinity;
+  
+    let best = verbose[0];
+    let sBest = -Infinity;
     for (const m of verbose) {
       const s = heuristicScore(m, g);
       if (s > sBest) { sBest = s; best = m; }
     }
-    const pieceFull: Record<string, string> = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' };
-    return { san: best.san, from: best.from, to: best.to, piece: pieceFull[best.piece] ?? best.piece, reason: 'Heuristik yedek öneri.' };
+    const pieceFull: Record<string, string> = {
+      p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King',
+    };
+  
+    return {
+      san: best.san,
+      from: best.from,
+      to: best.to,
+      piece: pieceFull[best.piece] ?? best.piece,
+      reasonTr: 'Sezgisel yedek: materyal, şah tehdidi ve merkez kontrolü gibi basit ölçütlerle seçildi.',
+      reasonEn: 'Heuristic fallback: chosen using simple features like material, king safety and central control.',
+    };
   }
 
   async function getAIHint(fen: string) {
@@ -184,19 +197,30 @@ export default function GamePage() {
       });
 
       const strict =
-        `You are a chess assistant. Choose EXACTLY ONE best move by its 0-based index from this SAN list.\n` +
-        `Return ONLY JSON: {"i":<int>,"reason":"<1-2 sentences>"}\n` +
-        `Moves: ${JSON.stringify(legalSAN)}\nFEN: ${fen}`;
+        `You are a chess assistant. From the SAN list, pick EXACTLY ONE best move by its 0-based index.` +
+        ` Respond with ONLY JSON like: {"i":<int>,"reason_tr":"<1-2 sentences>","reason_en":"<1-2 sentences>"}` +
+        `\nMoves: ${JSON.stringify(legalSAN)}\nFEN: ${fen}`;
 
-      const parseIndex = (txt: string): { i?: number; reason?: string } | null => {
-        try {
-          const j = JSON.parse(txt.replace(/(\r\n|\n|\r)/g, '').replace(/'/g, '"'));
-          if (Number.isInteger(j?.i)) return j;
-        } catch {}
-        const m = txt.match(/"i"\s*:\s*(\d+)|\bi\s*:\s*(\d+)/);
-        if (m) return { i: Number(m[1] ?? m[2]), reason: '' };
-        return null;
-      };
+        const parseIndex = (
+          txt: string,
+          max: number
+        ): { i?: number; tr?: string; en?: string } | null => {
+          try {
+            const cleaned = txt.replace(/(\r\n|\n|\r)/g, '').replace(/'/g, '"');
+            const j = JSON.parse(cleaned);
+            if (Number.isInteger(j?.i)) {
+              return {
+                i: j.i,
+                tr: j.reason_tr || j.reasonTr || '',
+                en: j.reason_en || j.reasonEn || '',
+              };
+            }
+          } catch {}
+          // en azından index’i yakalamayı dene
+          const m = txt.match(/"i"\s*:\s*(\d+)|\bi\s*:\s*(\d+)/);
+          if (m) return { i: Number(m[1] ?? m[2]), tr: '', en: '' };
+          return null;
+        };
 
       let raw = await ask(strict); if (mySeq !== reqSeq.current) return;
       let obj = parseIndex(raw);
@@ -222,7 +246,15 @@ export default function GamePage() {
         return;
       }
       const pieceFull: Record<string, string> = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' };
-      setAiSuggestion({ san: applied.san, from: applied.from, to: applied.to, piece: pieceFull[applied.piece] ?? applied.piece, reason: obj.reason ?? '' });
+      setAiSuggestion({
+        san: applied.san,
+        from: applied.from,
+        to: applied.to,
+        piece: pieceFull[applied.piece] ?? applied.piece,
+        reasonTr: obj.tr ?? '',
+        reasonEn: obj.en ?? '',
+      });
+      
       setAiHintText('');
     } catch (err) {
       const fb = fallbackSuggestion(fen);
@@ -371,12 +403,22 @@ export default function GamePage() {
             <div className="bg-yellow-100 border border-yellow-400 text-yellow-900 text-sm p-3 rounded">
               <div className="font-semibold">🍏 AI Önerisi</div>
               {aiSuggestion ? (
-                <div className="mt-1">
+                <div className="mt-1 space-y-1">
                   <div>
                     <b>Hamle:</b> {aiSuggestion.san}{' '}
-                    <span className="opacity-80">— ({aiSuggestion.piece} {aiSuggestion.from} → {aiSuggestion.to})</span>
+                    <span className="opacity-80">
+                      — ({aiSuggestion.piece} {aiSuggestion.from} → {aiSuggestion.to})</span>
                   </div>
-                  {aiSuggestion.reason && <div className="mt-1">{aiSuggestion.reason}</div>}
+                  {/* Türkçe açıklama */}
+                  {aiSuggestion.reasonTr && (
+                    <div className="mt-1">{aiSuggestion.reasonTr}</div>
+                  )}
+                  {/* İngilizce açıklama (biraz soluk) */}
+                  {aiSuggestion.reasonEn && (
+                    <div className="mt-1">
+                      EN: {aiSuggestion.reasonEn}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="mt-1">{aiHintText}</div>

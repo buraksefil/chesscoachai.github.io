@@ -4,10 +4,14 @@ export type MoveDetail = {
   color: 'white' | 'black';
   from: string;
   to: string;
-  piece: string;
+  piece: string; // 'p' | 'n' | 'b' | 'r' | 'q' | 'k' ya da adı
 };
 
-const pieceNames: Record<string, string> = {
+type Props = {
+  moveDetails: MoveDetail[];
+};
+
+const PIECE_TR: Record<string, string> = {
   p: 'Piyon',
   n: 'At',
   b: 'Fil',
@@ -16,41 +20,52 @@ const pieceNames: Record<string, string> = {
   k: 'Şah',
 };
 
-export default function MoveHistory({ moveDetails }: { moveDetails: MoveDetail[] }) {
-  const rows = [];
+function pretty(m?: MoveDetail) {
+  if (!m) return '';
+  const name = PIECE_TR[m.piece] ?? m.piece.toUpperCase();
+  return `${name} ${m.from} → ${m.to}`;
+}
+
+export default function MoveHistory({ moveDetails }: Props) {
+  // satırları 1…n şeklinde hazırla (beyaz/siyah çiftleri)
+  const rows: Array<{ no: number; white?: string; black?: string }> = [];
   for (let i = 0; i < moveDetails.length; i += 2) {
     const white = moveDetails[i];
     const black = moveDetails[i + 1];
-    rows.push({ white, black, num: Math.floor(i / 2) + 1 });
+    rows.push({
+      no: Math.floor(i / 2) + 1,
+      white: pretty(white),
+      black: pretty(black),
+    });
   }
 
   return (
-    <div className="bg-gray-900 text-white p-4 rounded-md w-80 h-96 overflow-y-auto">
-      <h2 className="text-lg font-bold mb-2">♟️ Hamle Geçmişi</h2>
-      <table className="text-sm w-full table-fixed">
-        <thead>
+    <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white">
+      <div className="text-lg font-semibold mb-2">Hamle Geçmişi</div>
+      <table className="w-full text-sm">
+        <thead className="opacity-70">
           <tr>
-            <th>#</th>
-            <th>Beyaz</th>
-            <th>Siyah</th>
+            <th className="text-left w-8">#</th>
+            <th className="text-left">Beyaz</th>
+            <th className="text-left">Siyah</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ white, black, num }) => (
-            <tr key={num}>
-              <td className="pr-2">{num}</td>
-              <td className="pr-2">
-                {white
-                  ? `${pieceNames[white.piece.toLowerCase()]} ${white.from} → ${white.to}`
-                  : ''}
-              </td>
-              <td>
-                {black
-                  ? `${pieceNames[black.piece.toLowerCase()]} ${black.from} → ${black.to}`
-                  : ''}
+          {rows.length ? (
+            rows.map((r) => (
+              <tr key={r.no} className="border-t border-white/10">
+                <td className="py-1 pr-2">{r.no}</td>
+                <td className="py-1 pr-2">{r.white || '—'}</td>
+                <td className="py-1">{r.black || '—'}</td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={3} className="py-2 opacity-60">
+                Henüz hamle yok.
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>
