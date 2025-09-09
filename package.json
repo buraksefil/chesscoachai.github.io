@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "export:docs": "rm -rf docs && GH_PAGES=true next build && mv out docs",
+    "export:docs": "next build && rm -rf docs && mv out docs",
     "start": "next start"
   },
   "dependencies": {
