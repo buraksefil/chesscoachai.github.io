@@ -1,0 +1,60 @@
+{
+    "play": "Play",
+    "chooseLanguage": "Choose your language",
+    "turkish": "Turkish",
+    "german": "German",
+    "english": "English",
+  
+    "white": "White",
+    "black": "Black",
+  
+    "game.over": "Game over",
+    "game.new": "New Game",
+  
+    "status.checkmate": "Checkmate!",
+    "status.mated": "is checkmated",
+    "status.won": "wins",
+    "status.stalemate": "Stalemate — draw.",
+    "status.turnOf": "It is the turn of",
+    "status.threefold": "Threefold repetition — draw.",
+    "status.insufficient": "Insufficient material — draw.",
+    "status.draw": "Draw.",
+  
+    "ai.suggestion": "AI Suggestion",
+    "ai.move": "Move",
+    "ai.noMoves": "No legal move.",
+    "ai.unavailable": "[Could not produce a suggestion]",
+    "ai.error": "[AI response unavailable]",
+    "ai.fallbackTr": "Heuristic fallback: picked using simple features like material, king safety and central control.",
+    "ai.fallbackEn": "Heuristic fallback: picked using simple features like material, king safety and central control.",
+  
+    "difficulty.select": "Select difficulty",
+    "difficulty.easy": "Easy",
+    "difficulty.normal": "Normal",
+    "difficulty.hard": "Hard",
+    "difficulty.help": "Easy: random • Normal: heuristic • Hard: shallow search",
+    "difficulty.opponent": "Opponent Difficulty",
+    "difficulty.level": "Level",
+    "difficulty.locked": "locked",
+    "difficulty.unselected": "Unselected",
+    "difficulty.note": "Difficulty is chosen at the start and cannot be changed until the game ends.",
+  
+    "promotion.title": "Promotion: which piece?",
+    "piece.queen": "Queen",
+    "piece.rook": "Rook",
+    "piece.bishop": "Bishop",
+    "piece.knight": "Knight",
+  
+    "common.cancel": "Cancel",
+  
+    "teaching.title": "Teaching Mode",
+    "teaching.on": "On",
+    "teaching.hint": "Click a piece on the board to highlight its legal moves. Below you will see its name and how it moves.",
+    "teaching.none": "No piece selected yet.",
+  
+    "history.title": "Move History",
+    "history.white": "White",
+    "history.black": "Black",
+    "history.none": "No moves yet."
+  }
+  

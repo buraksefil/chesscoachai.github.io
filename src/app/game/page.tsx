@@ -5,10 +5,9 @@ import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import ChatBox from './ChatBox';
 import MoveHistory, { MoveDetail } from './MoveHistory';
+import { useLang } from '@/providers/LanguageProvider';
 
-// 🔗 Worker URL'in: build-time ENV yoksa bu default kullanılacak
-const API_BASE = (process.env.NEXT_PUBLIC_API_BASE || 'https://ask-ai.buraksefil-work.workers.dev').replace(/\/$/, '');
-
+// ▶️ API endpoint
 const AI_ENDPOINT =
   process.env.NEXT_PUBLIC_AI_ENDPOINT ||
   'https://ask-ai.buraksefil-work.workers.dev/api/ask-ai';
@@ -26,6 +25,8 @@ type PendingMove = { from: string; to: string; color: 'w' | 'b' } | null;
 type Difficulty = 'easy' | 'normal' | 'hard';
 
 export default function GamePage() {
+  const { lang, t } = useLang();
+
   const [game, setGame] = useState(() => new Chess());
   const [moves, setMoves] = useState<string[]>([]);
   const [moveDetails, setMoveDetails] = useState<MoveDetail[]>([]);
@@ -51,33 +52,55 @@ export default function GamePage() {
   const [selectedSq, setSelectedSq] = useState<string | null>(null);
   const [moveSquares, setMoveSquares] = useState<Record<string, React.CSSProperties>>({});
 
-  const pieceNameTR: Record<string, string> = { p: 'Piyon', n: 'At', b: 'Fil', r: 'Kale', q: 'Vezir', k: 'Şah' };
-  const pieceHowTo: Record<string, string> = {
-    p: 'Bir kare ileri (ilk hamlede iki kare olabilir); çapraz alır; son sırada terfi eder.',
-    n: '“L” (2+1) şeklinde gider ve taşların üzerinden atlayabilir.',
-    b: 'Çapraz doğrultularda istediği kadar ilerler.',
-    r: 'Dikey/yatay doğrultuda istediği kadar ilerler.',
-    q: 'Kale+Fil birleşimi: yatay/dikey/çapraz istediği kadar ilerler.',
-    k: 'Bir kare her yöne gider; kale ile rok yapabilir.',
+  const pieceNames: Record<'tr'|'en'|'de', Record<string,string>> = {
+    tr: { p: 'Piyon', n: 'At', b: 'Fil', r: 'Kale', q: 'Vezir', k: 'Şah' },
+    en: { p: 'Pawn',  n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' },
+    de: { p: 'Bauer', n: 'Springer', b: 'Läufer', r: 'Turm', q: 'Dame', k: 'König' }
+  };
+  const pieceHow: Record<'tr'|'en'|'de', Record<string,string>> = {
+    tr: {
+      p: 'Bir kare ileri (ilk hamlede iki kare olabilir); çapraz alır; son sırada terfi eder.',
+      n: '“L” (2+1) şeklinde gider ve taşların üzerinden atlayabilir.',
+      b: 'Çapraz doğrultularda istediği kadar ilerler.',
+      r: 'Dikey/yatay doğrultuda istediği kadar ilerler.',
+      q: 'Kale+Fil birleşimi: yatay/dikey/çapraz istediği kadar ilerler.',
+      k: 'Bir kare her yöne gider; kale ile rok yapabilir.'
+    },
+    en: {
+      p: 'Moves one forward (two from start); captures diagonally; promotes on last rank.',
+      n: 'Moves in an “L” (2+1) and jumps over pieces.',
+      b: 'Moves any number of squares diagonally.',
+      r: 'Moves any number of squares horizontally/vertically.',
+      q: 'Rook + Bishop: any number of squares in any direction.',
+      k: 'One square any direction; can castle with rook.'
+    },
+    de: {
+      p: 'Ein Feld vor (zwei vom Start); schlägt diagonal; Umwandlung auf letzter Reihe.',
+      n: 'Bewegt sich in „L“-Form (2+1) und springt über Figuren.',
+      b: 'Beliebig viele Felder diagonal.',
+      r: 'Beliebig viele Felder horizontal/vertikal.',
+      q: 'Turm + Läufer: beliebig viele Felder in alle Richtungen.',
+      k: 'Ein Feld in jede Richtung; Rochade möglich.'
+    }
   };
 
   function clearTeachHints() { setSelectedSq(null); setMoveSquares({}); }
 
   function updateStatus(g: Chess) {
     if (g.isCheckmate()) {
-      const loser = g.turn() === 'w' ? 'Beyaz' : 'Siyah';
-      const winner = g.turn() === 'w' ? 'Siyah' : 'Beyaz';
-      setStatus({ over: true, text: `Şah mat! ${loser} mat oldu — ${winner} kazandı.` });
+      const loser = g.turn() === 'w' ? t('white') : t('black');
+      const winner = g.turn() === 'w' ? t('black') : t('white');
+      setStatus({ over: true, text: `${t('status.checkmate')} ${loser} ${t('status.mated')} — ${winner} ${t('status.won')}.` });
       return true;
     }
     if (g.isStalemate()) {
-      const side = g.turn() === 'w' ? 'Beyaz' : 'Siyah';
-      setStatus({ over: true, text: `Patt — berabere. Sıra ${side}'ta; ${side.toLowerCase()}nın hiç legal hamlesi yok ve şahı tehdit altında değil.` });
+      const side = g.turn() === 'w' ? t('white') : t('black');
+      setStatus({ over: true, text: `${t('status.stalemate')} ${t('status.turnOf',)} ${side}.` });
       return true;
     }
-    if (g.isThreefoldRepetition()) { setStatus({ over: true, text: 'Üç kez tekrar — berabere.' }); return true; }
-    if (g.isInsufficientMaterial()) { setStatus({ over: true, text: 'Yetersiz taş — berabere.' }); return true; }
-    if (g.isDraw()) { setStatus({ over: true, text: 'Berabere.' }); return true; }
+    if (g.isThreefoldRepetition()) { setStatus({ over: true, text: t('status.threefold') }); return true; }
+    if (g.isInsufficientMaterial()) { setStatus({ over: true, text: t('status.insufficient') }); return true; }
+    if (g.isDraw()) { setStatus({ over: true, text: t('status.draw') }); return true; }
     setStatus({ over: false, text: '' });
     return false;
   }
@@ -144,7 +167,7 @@ export default function GamePage() {
     const g = new Chess(fen);
     const verbose = g.moves({ verbose: true }) as any[];
     if (!verbose.length) return null;
-  
+
     let best = verbose[0];
     let sBest = -Infinity;
     for (const m of verbose) {
@@ -154,14 +177,14 @@ export default function GamePage() {
     const pieceFull: Record<string, string> = {
       p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King',
     };
-  
+
     return {
       san: best.san,
       from: best.from,
       to: best.to,
       piece: pieceFull[best.piece] ?? best.piece,
-      reasonTr: 'Sezgisel yedek: materyal, şah tehdidi ve merkez kontrolü gibi basit ölçütlerle seçildi.',
-      reasonEn: 'Heuristic fallback: chosen using simple features like material, king safety and central control.',
+      reasonTr: t('ai.fallbackTr'),
+      reasonEn: t('ai.fallbackEn'),
     };
   }
 
@@ -169,71 +192,59 @@ export default function GamePage() {
     try {
       const g = new Chess(fen);
       const legalSAN = g.moves();
-      if (!legalSAN.length) { setAiSuggestion(null); setAiHintText('Hamle yok.'); return; }
+      if (!legalSAN.length) { setAiSuggestion(null); setAiHintText(t('ai.noMoves')); return; }
 
       if (abortRef.current) abortRef.current.abort();
       const controller = new AbortController(); abortRef.current = controller;
       const mySeq = ++reqSeq.current;
 
-      // 🔁 GROQ Worker'a istek
-      const ask = async (prompt: string) => {
-        const res = await fetch(`${API_BASE}/api/ask-ai`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
-            prompt,
-            model: 'llama-3.3-70b-versatile', // Worker fallback’ı da var; bu satır opsiyonel
-          }),
-        });
-        const data = await res.json(); return String(data?.result ?? '').trim();
-      };
-
-      const res = await fetch(AI_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({ prompt }),
-      });
-
+      // Worker'a tek çağrı: prompt'u burada kuruyoruz
       const strict =
         `You are a chess assistant. From the SAN list, pick EXACTLY ONE best move by its 0-based index.` +
         ` Respond with ONLY JSON like: {"i":<int>,"reason_tr":"<1-2 sentences>","reason_en":"<1-2 sentences>"}` +
-        `\nMoves: ${JSON.stringify(legalSAN)}\nFEN: ${fen}`;
+        `\nMoves: ${JSON.stringify(legalSAN)}\nFEN: ${fen}\nLANG:${lang}`;
 
-        const parseIndex = (
-          txt: string,
-          max: number
-        ): { i?: number; tr?: string; en?: string } | null => {
-          try {
-            const cleaned = txt.replace(/(\r\n|\n|\r)/g, '').replace(/'/g, '"');
-            const j = JSON.parse(cleaned);
-            if (Number.isInteger(j?.i)) {
-              return {
-                i: j.i,
-                tr: j.reason_tr || j.reasonTr || '',
-                en: j.reason_en || j.reasonEn || '',
-              };
-            }
-          } catch {}
-          // en azından index’i yakalamayı dene
-          const m = txt.match(/"i"\s*:\s*(\d+)|\bi\s*:\s*(\d+)/);
-          if (m) return { i: Number(m[1] ?? m[2]), tr: '', en: '' };
-          return null;
-        };
+      const res = await fetch(AI_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Lang': lang },
+        signal: controller.signal,
+        body: JSON.stringify({
+          prompt: strict,
+          lang,                        // <— modeli dile uyarmak için
+          model: 'llama-3.3-70b-versatile'
+        }),
+      });
+      const data = await res.json();
+      let raw = String(data?.result ?? '').trim();
+      if (mySeq !== reqSeq.current) return;
 
-      let raw = await ask(strict); if (mySeq !== reqSeq.current) return;
-      let obj = parseIndex(raw);
+      const parseIndex = (
+        txt: string,
+        max: number
+      ): { i?: number; tr?: string; en?: string } | null => {
+        try {
+          const cleaned = txt.replace(/(\r\n|\n|\r)/g, '').replace(/'/g, '"');
+          const j = JSON.parse(cleaned);
+          if (Number.isInteger(j?.i)) {
+            return {
+              i: j.i,
+              tr: j.reason_tr || j.reasonTr || '',
+              en: j.reason_en || j.reasonEn || '',
+            };
+          }
+        } catch {}
+        const m = txt.match(/"i"\s*:\s*(\d+)|\bi\s*:\s*(\d+)/);
+        if (m) return { i: Number(m[1] ?? m[2]), tr: '', en: '' };
+        return null;
+      };
+
+      let obj = parseIndex(raw, legalSAN.length);
 
       if (!obj || !(obj.i! >= 0 && obj.i! < legalSAN.length)) {
-        raw = await ask(strict); if (mySeq !== reqSeq.current) return;
-        obj = parseIndex(raw);
-      }
-
-      if (!obj || !(obj.i! >= 0 && obj.i! < legalSAN.length)) {
+        // ikinci deneme için aynı prompt'u tekrar göndermek yerine yerel fallback
         const fb = fallbackSuggestion(fen);
         if (fb) { setAiSuggestion(fb); setAiHintText(''); }
-        else { setAiSuggestion(null); setAiHintText('[Öneri üretilemedi]'); }
+        else { setAiSuggestion(null); setAiHintText(t('ai.unavailable')); }
         return;
       }
 
@@ -242,7 +253,7 @@ export default function GamePage() {
       if (!applied) {
         const fb = fallbackSuggestion(fen);
         if (fb) { setAiSuggestion(fb); setAiHintText(''); }
-        else { setAiSuggestion(null); setAiHintText('[Öneri üretilemedi]'); }
+        else { setAiSuggestion(null); setAiHintText(t('ai.unavailable')); }
         return;
       }
       const pieceFull: Record<string, string> = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' };
@@ -254,12 +265,12 @@ export default function GamePage() {
         reasonTr: obj.tr ?? '',
         reasonEn: obj.en ?? '',
       });
-      
+
       setAiHintText('');
-    } catch (err) {
+    } catch {
       const fb = fallbackSuggestion(fen);
       if (fb) { setAiSuggestion(fb); setAiHintText(''); }
-      else { setAiSuggestion(null); setAiHintText('[AI yorum alınamadı]'); }
+      else { setAiSuggestion(null); setAiHintText(t('ai.error')); }
     }
   }
 
@@ -339,9 +350,13 @@ export default function GamePage() {
   useEffect(() => {
     if (difficulty && !status.over) getAIHint(game.fen());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [difficulty]);
+  }, [difficulty, lang]); // dil değişince yeni öneri iste
 
-  const prettyDiff = difficulty === 'easy' ? 'Kolay' : difficulty === 'normal' ? 'Normal' : difficulty === 'hard' ? 'Zor' : 'Seçilmedi';
+  const prettyDiff =
+    difficulty === 'easy' ? t('difficulty.easy') :
+    difficulty === 'normal' ? t('difficulty.normal') :
+    difficulty === 'hard' ? t('difficulty.hard') :
+    t('difficulty.unselected');
 
   return (
     <div className="p-6">
@@ -359,17 +374,17 @@ export default function GamePage() {
           {difficulty === null && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
               <div className="bg-zinc-900 text-white rounded-xl p-5 border border-zinc-700 w-80">
-                <div className="text-lg font-semibold mb-3">Zorluk seç</div>
+                <div className="text-lg font-semibold">{t('difficulty.select')}</div>
                 <div className="grid grid-cols-1 gap-2">
                   <button className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/20"
-                          onClick={() => setDifficulty('easy')}>Kolay</button>
+                          onClick={() => setDifficulty('easy')}>{t('difficulty.easy')}</button>
                   <button className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/20"
-                          onClick={() => setDifficulty('normal')}>Normal</button>
+                          onClick={() => setDifficulty('normal')}>{t('difficulty.normal')}</button>
                   <button className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 border border-white/20"
-                          onClick={() => setDifficulty('hard')}>Zor</button>
+                          onClick={() => setDifficulty('hard')}>{t('difficulty.hard')}</button>
                 </div>
                 <p className="text-xs opacity-70 mt-3">
-                  Kolay: rastgele • Normal: sezgisel • Zor: küçük arama (2 plilik)
+                  {t('difficulty.help')} {/* örn: "Easy: random • Normal: heuristic • Hard: small search" */}
                 </p>
               </div>
             </div>
@@ -378,15 +393,15 @@ export default function GamePage() {
           {showPromotion && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
               <div className="bg-zinc-900 text-white rounded-xl p-4 border border-zinc-700 w-64">
-                <div className="font-semibold mb-2">Terfi: hangi taş?</div>
+                <div className="font-semibold mb-2">{t('promotion.title')}</div>
                 <div className="grid grid-cols-4 gap-2">
-                  <button className="px-2 py-2 bg-zinc-800 rounded hover:bg-zinc-700" onClick={() => choosePromotion('q')}>Vezir</button>
-                  <button className="px-2 py-2 bg-zinc-800 rounded hover:bg-zinc-700" onClick={() => choosePromotion('r')}>Kale</button>
-                  <button className="px-2 py-2 bg-zinc-800 rounded hover:bg-zinc-700" onClick={() => choosePromotion('b')}>Fil</button>
-                  <button className="px-2 py-2 bg-zinc-800 rounded hover:bg-zinc-700" onClick={() => choosePromotion('n')}>At</button>
+                  <button className="px-2 py-2 bg-zinc-800 rounded hover:bg-zinc-700" onClick={() => choosePromotion('q')}>{t('piece.queen')}</button>
+                  <button className="px-2 py-2 bg-zinc-800 rounded hover:bg-zinc-700" onClick={() => choosePromotion('r')}>{t('piece.rook')}</button>
+                  <button className="px-2 py-2 bg-zinc-800 rounded hover:bg-zinc-700" onClick={() => choosePromotion('b')}>{t('piece.bishop')}</button>
+                  <button className="px-2 py-2 bg-zinc-800 rounded hover:bg-zinc-700" onClick={() => choosePromotion('n')}>{t('piece.knight')}</button>
                 </div>
                 <div className="mt-3 text-right">
-                  <button onClick={cancelPromotion} className="text-sm opacity-80 hover:opacity-100">İptal</button>
+                  <button onClick={cancelPromotion} className="text-sm opacity-80 hover:opacity-100">{t('common.cancel')}</button>
                 </div>
               </div>
             </div>
@@ -394,31 +409,23 @@ export default function GamePage() {
 
           {status.over ? (
             <div className="bg-amber-100 border border-amber-400 text-amber-900 text-sm p-3 rounded">
-              🏁 <strong>Oyun bitti:</strong> {status.text}{' '}
+              🏁 <strong>{t('game.over')}:</strong> {status.text}{' '}
               <button onClick={resetGame} className="ml-2 px-2 py-1 bg-amber-200 rounded border border-amber-400 hover:bg-amber-300">
-                Yeni Oyun
+                {t('game.new')}
               </button>
             </div>
           ) : (aiSuggestion || aiHintText) && difficulty && (
             <div className="bg-yellow-100 border border-yellow-400 text-yellow-900 text-sm p-3 rounded">
-              <div className="font-semibold">🍏 AI Önerisi</div>
+              <div className="font-semibold">🍏 {t('ai.suggestion')}</div>
               {aiSuggestion ? (
                 <div className="mt-1 space-y-1">
                   <div>
-                    <b>Hamle:</b> {aiSuggestion.san}{' '}
+                    <b>{t('ai.move')}:</b> {aiSuggestion.san}{' '}
                     <span className="opacity-80">
                       — ({aiSuggestion.piece} {aiSuggestion.from} → {aiSuggestion.to})</span>
                   </div>
-                  {/* Türkçe açıklama */}
-                  {aiSuggestion.reasonTr && (
-                    <div className="mt-1">{aiSuggestion.reasonTr}</div>
-                  )}
-                  {/* İngilizce açıklama (biraz soluk) */}
-                  {aiSuggestion.reasonEn && (
-                    <div className="mt-1">
-                      EN: {aiSuggestion.reasonEn}
-                    </div>
-                  )}
+                  {aiSuggestion.reasonTr && <div className="mt-1">{aiSuggestion.reasonTr}</div>}
+                  {aiSuggestion.reasonEn && <div className="mt-1">EN: {aiSuggestion.reasonEn}</div>}
                 </div>
               ) : (
                 <div className="mt-1">{aiHintText}</div>
@@ -433,41 +440,41 @@ export default function GamePage() {
 
         <div className="flex flex-col gap-4 lg:sticky lg:top-6">
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white">
-            <div className="text-lg font-semibold">Rakip Zorluğu</div>
+            <div className="text-lg font-semibold">{t('difficulty.opponent')}</div>
             <div className="mt-1">
               <span className="inline-block px-2 py-1 rounded bg-blue-600/80 border border-blue-500 text-sm">
-                Seviye: <b>{difficulty ? (difficulty === 'easy' ? 'Kolay' : difficulty === 'normal' ? 'Normal' : 'Zor') : 'Seçilmedi'}</b> {difficulty ? '• kilitli' : '(seçilmedi)'}
+                {t('difficulty.level')}: <b>{prettyDiff}</b> {difficulty ? `• ${t('difficulty.locked')}` : `(${t('difficulty.unselected')})`}
               </span>
             </div>
             <p className="text-xs opacity-70 mt-2">
-              Seviye her oyun başında seçilir ve oyun bitene kadar değiştirilemez.
+              {t('difficulty.note')}
             </p>
           </div>
 
           <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white">
             <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">Öğretici Modu</div>
+              <div className="text-lg font-semibold">{t('teaching.title')}</div>
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   checked={teaching}
                   onChange={(e) => { setTeaching(e.target.checked); if (!e.target.checked) clearTeachHints(); }}
                 />
-                Açık
+                {t('teaching.on')}
               </label>
             </div>
             <p className="text-sm opacity-80 mt-2">
-              Tahtada bir <b>taşa tıklayın</b>; o taşın gidebileceği kareler vurgulanır. Aşağıda taşın adı ve hareket şekli görünür.
+              {t('teaching.hint')}
             </p>
             {(() => {
-              if (!selectedSq) return <div className="mt-3 text-sm opacity-60">Henüz bir taş seçilmedi.</div>;
-              const p = game.get(selectedSq); if (!p) return <div className="mt-3 text-sm opacity-60">Henüz bir taş seçilmedi.</div>;
+              if (!selectedSq) return <div className="mt-3 text-sm opacity-60">{t('teaching.none')}</div>;
+              const p = game.get(selectedSq); if (!p) return <div className="mt-3 text-sm opacity-60">{t('teaching.none')}</div>;
               const name = pieceNameTR[p.type] ?? p.type.toUpperCase();
-              const color = p.color === 'w' ? 'Beyaz' : 'Siyah';
+              const color = p.color === 'w' ? t('white') : t('black');
               const how = pieceHowTo[p.type] ?? '';
               return (
                 <div className="mt-3 rounded-lg bg-white/10 border border-white/10 p-3">
-                  <div className="font-medium">Seçili taş: {color} <b>{name}</b>{selectedSq ? ` (${selectedSq})` : null}</div>
+                  <div className="font-medium">{t('teaching.selected')}: {color} <b>{name}</b>{selectedSq ? ` (${selectedSq})` : null}</div>
                   <div className="text-sm mt-1">{how}</div>
                 </div>
               );

@@ -1,20 +1,19 @@
-// app/page.tsx
 'use client';
-import Link from 'next/link';
 
-export default function Home() {
+import Link from 'next/link';
+import LanguagePicker from '@/components/LanguagePicker';
+import { useLang } from '@/providers/LanguageProvider';
+
+export default function HomePage() {
+  const { t } = useLang();
+
   return (
-    <main className="min-h-screen flex items-center justify-center bg-zinc-950 text-white p-8">
-      <div className="max-w-xl text-center space-y-6">
-        <h1 className="text-4xl font-bold">ChessCoach.ai</h1>
-        <p className="opacity-80">
-          Akıllı satranç koçu: öneri, plan ve taktikleri anlık olarak açıklar.
-        </p>
-        <Link
-          href="/game"
-          className="inline-block px-6 py-3 rounded bg-emerald-600 hover:bg-emerald-700"
-        >
-          Oyna
+    <main className="min-h-dvh grid place-items-center p-6">
+      <LanguagePicker />
+      <div className="text-center space-y-6">
+        <h1 className="text-3xl font-bold">Chess Coach AI</h1>
+        <Link href="/game" className="px-6 py-3 rounded-2xl border hover:bg-black/5">
+          {t('play')}
         </Link>
       </div>
     </main>

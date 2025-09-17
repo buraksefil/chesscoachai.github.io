@@ -1,0 +1,60 @@
+{
+    "play": "Spielen",
+    "chooseLanguage": "Sprache wählen",
+    "turkish": "Türkisch",
+    "german": "Deutsch",
+    "english": "Englisch",
+  
+    "white": "Weiß",
+    "black": "Schwarz",
+  
+    "game.over": "Spiel vorbei",
+    "game.new": "Neues Spiel",
+  
+    "status.checkmate": "Schachmatt!",
+    "status.mated": "wurde matt gesetzt",
+    "status.won": "gewinnt",
+    "status.stalemate": "Patt — Remis.",
+    "status.turnOf": "Am Zug ist",
+    "status.threefold": "Dreifache Stellungswiederholung — Remis.",
+    "status.insufficient": "Ungenügendes Material — Remis.",
+    "status.draw": "Remis.",
+  
+    "ai.suggestion": "KI-Vorschlag",
+    "ai.move": "Zug",
+    "ai.noMoves": "Kein legaler Zug.",
+    "ai.unavailable": "[Vorschlag konnte nicht erzeugt werden]",
+    "ai.error": "[KI-Antwort nicht verfügbar]",
+    "ai.fallbackTr": "Heuristische Reserve: gewählt anhand einfacher Merkmale wie Material, Königssicherheit und Zentrums­kontrolle.",
+    "ai.fallbackEn": "Heuristic fallback: chosen using simple features like material, king safety and central control.",
+  
+    "difficulty.select": "Schwierigkeit wählen",
+    "difficulty.easy": "Leicht",
+    "difficulty.normal": "Normal",
+    "difficulty.hard": "Schwierig",
+    "difficulty.help": "Leicht: zufällig • Normal: heuristisch • Schwierig: flache Suche",
+    "difficulty.opponent": "Gegner-Schwierigkeit",
+    "difficulty.level": "Stufe",
+    "difficulty.locked": "gesperrt",
+    "difficulty.unselected": "Nicht gewählt",
+    "difficulty.note": "Die Stufe wird zu Beginn gewählt und bleibt bis zum Spielende gleich.",
+  
+    "promotion.title": "Umwandlung: welche Figur?",
+    "piece.queen": "Dame",
+    "piece.rook": "Turm",
+    "piece.bishop": "Läufer",
+    "piece.knight": "Springer",
+  
+    "common.cancel": "Abbrechen",
+  
+    "teaching.title": "Lernmodus",
+    "teaching.on": "An",
+    "teaching.hint": "Klicke eine Figur, um ihre legalen Züge zu sehen. Unten stehen Name und Zugweise.",
+    "teaching.none": "Noch keine Figur gewählt.",
+  
+    "history.title": "Zugliste",
+    "history.white": "Weiß",
+    "history.black": "Schwarz",
+    "history.none": "Noch keine Züge."
+  }
+  

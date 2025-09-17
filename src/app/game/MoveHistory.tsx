@@ -1,5 +1,7 @@
 'use client';
 
+import { useLang } from '@/providers/LanguageProvider';
+
 export type MoveDetail = {
   color: 'white' | 'black';
   from: string;
@@ -11,22 +13,23 @@ type Props = {
   moveDetails: MoveDetail[];
 };
 
-const PIECE_TR: Record<string, string> = {
-  p: 'Piyon',
-  n: 'At',
-  b: 'Fil',
-  r: 'Kale',
-  q: 'Vezir',
-  k: 'Şah',
+// Dil-özel taş adları
+const PIECE_NAMES: Record<'tr' | 'en' | 'de', Record<string, string>> = {
+  tr: { p: 'Piyon', n: 'At', b: 'Fil', r: 'Kale', q: 'Vezir', k: 'Şah' },
+  en: { p: 'Pawn',  n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' },
+  de: { p: 'Bauer', n: 'Springer', b: 'Läufer', r: 'Turm', q: 'Dame', k: 'König' }
 };
 
-function pretty(m?: MoveDetail) {
-  if (!m) return '';
-  const name = PIECE_TR[m.piece] ?? m.piece.toUpperCase();
-  return `${name} ${m.from} → ${m.to}`;
-}
-
 export default function MoveHistory({ moveDetails }: Props) {
+  const { lang, t } = useLang();
+
+  const pretty = (m?: MoveDetail) => {
+    if (!m) return '';
+    const dict = PIECE_NAMES[lang] ?? PIECE_NAMES.en;
+    const name = dict[m.piece] ?? m.piece.toUpperCase();
+    return `${name} ${m.from} → ${m.to}`;
+  };
+
   // satırları 1…n şeklinde hazırla (beyaz/siyah çiftleri)
   const rows: Array<{ no: number; white?: string; black?: string }> = [];
   for (let i = 0; i < moveDetails.length; i += 2) {
@@ -41,13 +44,13 @@ export default function MoveHistory({ moveDetails }: Props) {
 
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white">
-      <div className="text-lg font-semibold mb-2">Hamle Geçmişi</div>
+      <div className="text-lg font-semibold mb-2">{t('history.title')}</div>
       <table className="w-full text-sm">
         <thead className="opacity-70">
           <tr>
             <th className="text-left w-8">#</th>
-            <th className="text-left">Beyaz</th>
-            <th className="text-left">Siyah</th>
+            <th className="text-left">{t('history.white')}</th>
+            <th className="text-left">{t('history.black')}</th>
           </tr>
         </thead>
         <tbody>
@@ -62,7 +65,7 @@ export default function MoveHistory({ moveDetails }: Props) {
           ) : (
             <tr>
               <td colSpan={3} className="py-2 opacity-60">
-                Henüz hamle yok.
+                {t('history.none')}
               </td>
             </tr>
           )}

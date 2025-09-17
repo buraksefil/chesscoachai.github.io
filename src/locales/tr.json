@@ -1,0 +1,60 @@
+{
+    "play": "Oyna",
+    "chooseLanguage": "Dilini seç",
+    "turkish": "Türkçe",
+    "german": "Almanca",
+    "english": "İngilizce",
+  
+    "white": "Beyaz",
+    "black": "Siyah",
+  
+    "game.over": "Oyun bitti",
+    "game.new": "Yeni Oyun",
+  
+    "status.checkmate": "Şah mat!",
+    "status.mated": "mat oldu",
+    "status.won": "kazandı",
+    "status.stalemate": "Patt — berabere.",
+    "status.turnOf": "Sıra",
+    "status.threefold": "Üç kez tekrar — berabere.",
+    "status.insufficient": "Yetersiz taş — berabere.",
+    "status.draw": "Berabere.",
+  
+    "ai.suggestion": "AI Önerisi",
+    "ai.move": "Hamle",
+    "ai.noMoves": "Hamle yok.",
+    "ai.unavailable": "[Öneri üretilemedi]",
+    "ai.error": "[AI yanıtı alınamadı]",
+    "ai.fallbackTr": "Sezgisel yedek: materyal, şah güvenliği ve merkez kontrolü gibi basit ölçütlerle seçildi.",
+    "ai.fallbackEn": "Heuristic fallback: chosen using simple features like material, king safety and central control.",
+  
+    "difficulty.select": "Zorluk seç",
+    "difficulty.easy": "Kolay",
+    "difficulty.normal": "Normal",
+    "difficulty.hard": "Zor",
+    "difficulty.help": "Kolay: rastgele • Normal: sezgisel • Zor: sığ arama",
+    "difficulty.opponent": "Rakip Zorluğu",
+    "difficulty.level": "Seviye",
+    "difficulty.locked": "kilitli",
+    "difficulty.unselected": "Seçilmedi",
+    "difficulty.note": "Seviye oyun başında seçilir ve oyun bitene kadar değiştirilemez.",
+  
+    "promotion.title": "Terfi: hangi taş?",
+    "piece.queen": "Vezir",
+    "piece.rook": "Kale",
+    "piece.bishop": "Fil",
+    "piece.knight": "At",
+  
+    "common.cancel": "İptal",
+  
+    "teaching.title": "Öğretici Modu",
+    "teaching.on": "Açık",
+    "teaching.hint": "Tahtada bir taşa tıklayın; yasal hamleleri vurgulanır. Aşağıda taşın adı ve hareket şekli görünür.",
+    "teaching.none": "Henüz bir taş seçilmedi.",
+  
+    "history.title": "Hamle Geçmişi",
+    "history.white": "Beyaz",
+    "history.black": "Siyah",
+    "history.none": "Henüz hamle yok."
+  }
+  
