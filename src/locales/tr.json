@@ -56,5 +56,10 @@
     "history.white": "Beyaz",
     "history.black": "Siyah",
     "history.none": "Henüz hamle yok."
-  }
+,
+  "chat.title": "AI Assistant",
+  "chat.helper": "Her şeyi sorabilirsin: “Şu anki konumu değerlendir”, “Planım ne olmalı?”, “Mat var mı?”, “En iyi hamle?”",
+  "chat.placeholder": "AI'ya bir şey sor…",
+  "chat.send": "Gönder"
+}
   

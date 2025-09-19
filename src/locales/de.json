@@ -56,5 +56,10 @@
     "history.white": "Weiß",
     "history.black": "Schwarz",
     "history.none": "Noch keine Züge."
-  }
+  ,
+  "chat.title": "AI Assistant",
+  "chat.helper": "Frag alles: „Bewerte die aktuelle Stellung“, „Was sollte mein Plan sein?“, „Gibt es Matt?“, „Bester Zug?“",
+  "chat.placeholder": "Frag die KI etwas…",
+  "chat.send": "Senden"
+}
   

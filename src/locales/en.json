@@ -56,5 +56,10 @@
     "history.white": "White",
     "history.black": "Black",
     "history.none": "No moves yet."
-  }
+,
+  "chat.title": "AI Assistant",
+  "chat.helper": "Ask anything: “Assess the current position”, “What should my plan be?”, “Is there mate?”, “Best move?”",
+  "chat.placeholder": "Ask the AI something…",
+  "chat.send": "Send"
+}
   

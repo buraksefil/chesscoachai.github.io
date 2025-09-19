@@ -1,13 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useEffect } from 'react';
 import { Chess } from 'chess.js';
+import { useLang } from '@/providers/LanguageProvider';
 
 type Msg = { role: 'user' | 'ai'; text: string };
 
 export default function ChatBox({ moves, fen }: { moves: string[]; fen: string }) {
   const [input, setInput] = useState('');
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const { lang, t } = useLang();
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   const pieceTR: Record<string, string> = {
     p: 'Piyon', n: 'At', b: 'Fil', r: 'Kale', q: 'Vezir', k: 'Şah',
@@ -44,7 +47,9 @@ export default function ChatBox({ moves, fen }: { moves: string[]; fen: string }
     }
 
     const turnColor = g.turn(); // 'w' | 'b'
-    const turnLabel = turnColor === 'w' ? 'Beyaz' : 'Siyah';
+    const whiteLabel = t('white');
+    const blackLabel = t('black');
+    const turnLabel = turnColor === 'w' ? whiteLabel : blackLabel;
 
     const legalVerbose = g.moves({ verbose: true }) as any[];
 
@@ -65,47 +70,48 @@ export default function ChatBox({ moves, fen }: { moves: string[]; fen: string }
         from: m.from, to: m.to, san: m.san, piece: m.piece,
         captured: m.captured ?? null, promotion: m.promotion ?? null
       })),
-      white: { count: whitePieces.length, pieces: whitePieces },
-      black: { count: blackPieces.length, pieces: blackPieces },
+      white: { count: whitePieces.length, pieces: whitePieces, label: whiteLabel },
+      black: { count: blackPieces.length, pieces: blackPieces, label: blackLabel },
     };
-  }, [fen, moves]);
+  }, [fen, moves, t]);
 
   // Basit yerel özet (LLM boş dönerse yedek)
   function localFallbackSummary(): string {
     const d = state;
     if (d.is_checkmate) {
-      const winner = d.side_to_move === 'Beyaz' ? 'Siyah' : 'Beyaz';
-      return `Şah mat. ${winner} kazandı.`;
+      const loser = d.side_to_move === t('white') ? t('white') : t('black');
+      const winner = d.side_to_move === t('white') ? t('black') : t('white');
+      return `${t('status.checkmate')} ${loser} ${t('status.mated')} — ${winner} ${t('status.won')}.`;
     }
-    if (d.is_stalemate) return `Patt — berabere. Sıra ${d.side_to_move}'ta ama yasal hamle yok.`;
-    if (d.is_draw) return `Oyun berabere. Sıra: ${d.side_to_move}.`;
-    return `Oyun devam ediyor. Sıra ${d.side_to_move}'ta. Toplam legal hamle: ${d.legal_count}.`;
+    if (d.is_stalemate) return `${t('status.stalemate')} ${t('status.turnOf')} ${d.side_to_move}.`;
+    if (d.is_draw) return `${t('status.draw')} ${t('status.turnOf')} ${d.side_to_move}.`;
+    return `${t('status.turnOf')} ${d.side_to_move}.`;
   }
 
   async function askCoach(question: string) {
-    const endpoint = process.env.NEXT_PUBLIC_AI_ENDPOINT || '/api/ask-ai';
+    const endpoint = '/api/ask-ai';
 
-    // Tek prompt: her zaman koç modu, sadece STATE’e dayan, Türkçe yaz.
+    // Tek prompt: her zaman koç modu, sadece STATE’e dayan; dili seçime göre yaz.
     const prompt =
-`Sen ChessCoach.ai isimli güçlü bir satranç koçusun.
-Aşağıda sana chess.js'ten üretilmiş TAHTA DURUMU (STATE) veriyorum.
-Cevaplarını YALNIZ bu STATE'e dayanarak üret. Uydurma yapma; emin değilsen "bu veriden kesin söyleyemem" de.
-Türkçe yaz. Öğretici, sade ve net ol.
+`You are ChessCoach.ai, a strong chess coach.
+Below is the board STATE generated from chess.js.
+Respond ONLY based on this STATE. If uncertain, say so.
+Write strictly in language code: ${lang}.
 
-Genel davranış:
-- Kullanıcı ne sorarsa sorsun, önce konumu kısaca değerlendir (şah/tehdit/taş aktivitesi/plan).
-- İSTERSE hamle öner: sıranın kimde olduğunu belirt, en iyi bulduğun 1 hamleyi **SAN** formatında yaz ve 3–6 cümleyle gerekçelendir.
-- Eğer sıranın karşı tarafta olduğunu fark edersen, önce "Sıra ${state.side_to_move}'ta" diye düzelt ve ona göre konuş.
-- Taktik uyarıları (açıkta taş, çatal, mat ağı vb.) varsa belirt.
-- Gereksiz uzun anlatma; net, araç gösterir gibi konuş.
-- Çıktı biçimi: normal metin/markdown. JSON döndürme.
+Requirements:
+1) Write at most 6 sentences in TOTAL.
+2) Start with a brief assessment + reasoning in 3–5 sentences (checks, threats, plans).
+3) Then a separate line: "Best move: <SAN>" (or say none if no legal move).
+4) If the side to move is the opponent, clearly state that first using STATE.white.label / STATE.black.label.
+5) Optionally add one short "Tactics:" line only if something immediate exists.
+6) Output plain text/markdown only. Do NOT return JSON.
 
 STATE (JSON):
 \`\`\`json
 ${JSON.stringify(state)}
 \`\`\`
 
-Kullanıcının sorusu:
+User question:
 ${question}`;
 
     const res = await fetch(
@@ -113,7 +119,7 @@ ${question}`;
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, systemPrompt: `You are a chess expert coach. Always answer strictly in ${lang}. Follow the OUTPUT FORMAT exactly and use AT MOST 6 sentences in total. Do not reply with only whose turn it is. Never output JSON.` }),
       }
     );
 
@@ -135,27 +141,18 @@ ${question}`;
     }
   }
 
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [msgs]);
+
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white max-w-3xl">
-      <h3 className="text-xl font-semibold mb-3">Aktif taşlar (canlı FEN):</h3>
-
-      <div className="grid grid-cols-2 gap-4 text-sm">
-        <div>
-          <div className="font-semibold mb-1">Beyaz:</div>
-          <ul className="list-disc list-inside opacity-90">
-            {state.white.pieces.length ? state.white.pieces.map((p, i) => <li key={i}>{p.piece} ({p.square})</li>) : <li>—</li>}
-          </ul>
-        </div>
-        <div>
-          <div className="font-semibold mb-1">Siyah:</div>
-          <ul className="list-disc list-inside opacity-90">
-            {state.black.pieces.length ? state.black.pieces.map((p, i) => <li key={i}>{p.piece} ({p.square})</li>) : <li>—</li>}
-          </ul>
-        </div>
-      </div>
+      <h3 className="text-xl font-semibold mb-3">{t('chat.title')}</h3>
 
       {/* Mesajlar */}
-      <div className="mt-4 space-y-2 max-h-64 overflow-y-auto bg-white/5 rounded p-2 border border-white/10">
+      <div ref={listRef} className="mt-4 space-y-2 max-h-64 overflow-y-auto bg-white/5 rounded p-2 border border-white/10">
         {msgs.map((m, i) => (
           <div key={i} className={'text-sm whitespace-pre-wrap ' + (m.role === 'user' ? 'text-blue-200' : 'text-emerald-200')}>
             <span className="inline-block mr-1 px-1.5 py-0.5 rounded bg-white/10">
@@ -165,9 +162,7 @@ ${question}`;
           </div>
         ))}
         {!msgs.length && (
-          <div className="text-sm opacity-70">
-            Her şeyi sorabilirsin: “Şu anki konumu değerlendir”, “Planım ne olmalı?”, “Mat var mı?”, “En iyi hamle?”
-          </div>
+          <div className="text-sm opacity-70">{t('chat.helper')}</div>
         )}
       </div>
 
@@ -177,17 +172,15 @@ ${question}`;
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && onSend()}
-          placeholder="AI'ya bir şey sor…"
+          placeholder={t('chat.placeholder')}
           className="flex-1 px-3 py-2 rounded bg-white/10 border border-white/20 outline-none"
         />
         <button onClick={onSend} className="px-3 py-2 rounded bg-blue-600 hover:bg-blue-700">
-          Gönder
+          {t('chat.send')}
         </button>
       </div>
 
-      {moves.length > 0 && (
-        <div className="text-xs opacity-70 mt-2">Son hamle: {moves[moves.length - 1]}</div>
-      )}
+      {/* Only chat area as requested */}
     </div>
   );
 }

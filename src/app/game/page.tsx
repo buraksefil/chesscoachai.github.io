@@ -83,6 +83,7 @@ export default function GamePage() {
       k: 'Ein Feld in jede Richtung; Rochade möglich.'
     }
   };
+  const currentLang: 'tr'|'en'|'de' = (lang === 'tr' || lang === 'de' || lang === 'en') ? lang : 'en';
 
   function clearTeachHints() { setSelectedSq(null); setMoveSquares({}); }
 
@@ -439,48 +440,6 @@ export default function GamePage() {
         </div>
 
         <div className="flex flex-col gap-4 lg:sticky lg:top-6">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white">
-            <div className="text-lg font-semibold">{t('difficulty.opponent')}</div>
-            <div className="mt-1">
-              <span className="inline-block px-2 py-1 rounded bg-blue-600/80 border border-blue-500 text-sm">
-                {t('difficulty.level')}: <b>{prettyDiff}</b> {difficulty ? `• ${t('difficulty.locked')}` : `(${t('difficulty.unselected')})`}
-              </span>
-            </div>
-            <p className="text-xs opacity-70 mt-2">
-              {t('difficulty.note')}
-            </p>
-          </div>
-
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-white">
-            <div className="flex items-center justify-between">
-              <div className="text-lg font-semibold">{t('teaching.title')}</div>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={teaching}
-                  onChange={(e) => { setTeaching(e.target.checked); if (!e.target.checked) clearTeachHints(); }}
-                />
-                {t('teaching.on')}
-              </label>
-            </div>
-            <p className="text-sm opacity-80 mt-2">
-              {t('teaching.hint')}
-            </p>
-            {(() => {
-              if (!selectedSq) return <div className="mt-3 text-sm opacity-60">{t('teaching.none')}</div>;
-              const p = game.get(selectedSq); if (!p) return <div className="mt-3 text-sm opacity-60">{t('teaching.none')}</div>;
-              const name = pieceNameTR[p.type] ?? p.type.toUpperCase();
-              const color = p.color === 'w' ? t('white') : t('black');
-              const how = pieceHowTo[p.type] ?? '';
-              return (
-                <div className="mt-3 rounded-lg bg-white/10 border border-white/10 p-3">
-                  <div className="font-medium">{t('teaching.selected')}: {color} <b>{name}</b>{selectedSq ? ` (${selectedSq})` : null}</div>
-                  <div className="text-sm mt-1">{how}</div>
-                </div>
-              );
-            })()}
-          </div>
-
           <MoveHistory moveDetails={moveDetails} />
         </div>
       </div>
