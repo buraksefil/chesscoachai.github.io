@@ -3,24 +3,16 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { DEFAULT_LANG, STORAGE_KEY, getDict, type Lang } from '@/lib/i18n';
 
-type Ctx = {
-  lang: Lang;
-  setLang: (l: Lang) => void;
-  t: (k: string) => string;
-};
+type Ctx = { lang: Lang; setLang: (l: Lang) => void; t: (k: string) => string; };
 
-const LanguageCtx = createContext<Ctx>({
-  lang: DEFAULT_LANG,
-  setLang: () => {},
-  t: (k) => k
-});
+const C = createContext<Ctx>({ lang: DEFAULT_LANG, setLang: () => {}, t: (k) => k });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Lang>(DEFAULT_LANG);
 
-  // ilk açılışta storage'tan oku
   useEffect(() => {
-    const saved = (typeof window !== 'undefined' && localStorage.getItem(STORAGE_KEY)) as Lang | null;
+    if (typeof window === 'undefined') return;
+    const saved = localStorage.getItem(STORAGE_KEY) as Lang | null;
     if (saved) setLang(saved);
   }, []);
 
@@ -32,13 +24,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') localStorage.setItem(STORAGE_KEY, l);
   };
 
-  return (
-    <LanguageCtx.Provider value={{ lang, setLang: update, t }}>
-      {children}
-    </LanguageCtx.Provider>
-  );
+  return <C.Provider value={{ lang, setLang: update, t }}>{children}</C.Provider>;
 }
 
-export function useLang() {
-  return useContext(LanguageCtx);
-}
+export const useLang = () => useContext(C);
