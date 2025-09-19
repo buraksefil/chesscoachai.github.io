@@ -89,7 +89,11 @@ export default function ChatBox({ moves, fen }: { moves: string[]; fen: string }
   }
 
   async function askCoach(question: string) {
-    const endpoint = '/api/ask-ai';
+    const envEndpoint = process.env.NEXT_PUBLIC_AI_ENDPOINT;
+    const isGhPages = typeof window !== 'undefined' && /github\.io$/.test(window.location.hostname);
+    const endpoint = envEndpoint && envEndpoint.length
+      ? envEndpoint
+      : (isGhPages ? 'https://ask-ai.buraksefil-work.workers.dev/api/ask-ai' : '/api/ask-ai');
 
     // Tek prompt: her zaman koç modu, sadece STATE’e dayan; dili seçime göre yaz.
     const prompt =
@@ -114,14 +118,18 @@ ${JSON.stringify(state)}
 User question:
 ${question}`;
 
-    const res = await fetch(
-      endpoint.startsWith('http') ? endpoint : endpoint, // GH Pages için tam URL ise aynen kullan
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, systemPrompt: `You are a chess expert coach. Always answer strictly in ${lang}. Follow the OUTPUT FORMAT exactly and use AT MOST 6 sentences in total. Do not reply with only whose turn it is. Never output JSON.` }),
-      }
-    );
+    const isExternal = endpoint.startsWith('http');
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: isExternal
+        ? { 'Content-Type': 'application/json', 'X-Lang': lang }
+        : { 'Content-Type': 'application/json' },
+      body: JSON.stringify(
+        isExternal
+          ? { prompt, lang, model: 'llama-3.3-70b-versatile' }
+          : { prompt, systemPrompt: `You are a chess expert coach. Always answer strictly in ${lang}. Follow the OUTPUT FORMAT exactly and use AT MOST 6 sentences in total. Do not reply with only whose turn it is. Never output JSON.` }
+      ),
+    });
 
     const data = await res.json().catch(() => ({}));
     const text = String(data?.result ?? '').trim();
